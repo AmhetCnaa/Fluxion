@@ -15,10 +15,10 @@
 
 ---
 
-[![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-09090b?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/AmhetCnaa/Fluxion)
-[![Engine](https://img.shields.io/badge/Downloader-16x%20Aria2%20Parallel-18181c?style=for-the-badge)](https://github.com/AmhetCnaa/Fluxion)
-[![Muxer](https://img.shields.io/badge/Muxer-FFmpeg%206.1%20Lossless-09090b?style=for-the-badge&logo=ffmpeg&logoColor=white)](https://github.com/AmhetCnaa/Fluxion)
-[![GUI](https://img.shields.io/badge/GUI-Edge%20WebView2%20Studio-18181c?style=for-the-badge)](https://github.com/AmhetCnaa/Fluxion)
+[![Desktop](https://img.shields.io/badge/Desktop-Windows%2010%20%7C%2011-09090b?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/AmhetCnaa/Fluxion)
+[![Mobile](https://img.shields.io/badge/Mobile-Android%20APK-18181c?style=for-the-badge&logo=android&logoColor=white)](https://github.com/AmhetCnaa/Fluxion/raw/main/Fluxion.apk)
+[![Engine](https://img.shields.io/badge/Downloader-16x%20Aria2%20Parallel-09090b?style=for-the-badge)](https://github.com/AmhetCnaa/Fluxion)
+[![Muxer](https://img.shields.io/badge/Muxer-FFmpeg%206.1%20Lossless-18181c?style=for-the-badge&logo=ffmpeg&logoColor=white)](https://github.com/AmhetCnaa/Fluxion)
 [![License](https://img.shields.io/badge/License-MIT-09090b?style=for-the-badge)](https://github.com/AmhetCnaa/Fluxion)
 
 </div>
@@ -27,9 +27,20 @@
 
 ## ⚡ Overview
 
-**Fluxion** is a modern, standalone desktop media engine built for creators, audiophiles, and power users who need instant, unthrottled media extraction without clutter, intrusive ads, or command-line friction.
+**Fluxion** is a modern, standalone desktop and mobile media engine built for creators, audiophiles, and power users who need instant, unthrottled media extraction without clutter, intrusive ads, or command-line friction.
 
 Unlike generic downloaders throttled by YouTube's cipher and limited by single-threaded TCP connections, Fluxion combines an **embedded Node.js EJS challenge solver** with an optimized **16-channel parallel aria2c pipeline**, delivering download speeds up to **30–50+ MB/s** on high-bandwidth connections.
+
+---
+
+## 📲 Android Mobile (.apk)
+
+Fluxion is also available as an ultra-lightweight (2.5 MB) Android app with native system integration:
+
+- **📥 Download APK Directly:** [**Fluxion.apk (v1.0.0)**](https://github.com/AmhetCnaa/Fluxion/raw/main/Fluxion.apk)
+- **Direct Share Target:** While watching videos in YouTube, Instagram, or TikTok, tap **Share ➔ Fluxion** to automatically load and resolve the link.
+- **Native Android Downloads:** Saves media directly to your phone's `/storage/emulated/0/Download/Fluxion` directory.
+- **Fluid Obsidian UI:** Identical desktop studio dark aesthetic with responsive touch gestures and bilingual toggle.
 
 ---
 

@@ -1296,6 +1296,9 @@
     }
 
     async function getApi() {
+      if (window.Android) {
+        return window.Android;
+      }
       if (window.pywebview && window.pywebview.api && typeof window.pywebview.api.start_download === 'function') {
         return window.pywebview.api;
       }
@@ -1605,8 +1608,31 @@
       setFormat(selectedFormat);
     }
 
+    // Handle shared incoming URLs on Android / external triggers
+    window.onSharedUrlReceived = function(url) {
+      if (url && url.startsWith('http')) {
+        urlInput.value = url;
+        clearBtn.style.display = 'flex';
+        detectPlatform(url);
+        onUrlChanged(url);
+      }
+    };
+
     // Initialize Language & Bridge
     setLanguage(currentLang);
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      if (window.Android) {
+        if (typeof window.Android.getSharedUrl === 'function') {
+          const shared = window.Android.getSharedUrl();
+          if (shared) window.onSharedUrlReceived(shared);
+        }
+        if (typeof window.Android.get_download_dir === 'function') {
+          currentDownloadDir = window.Android.get_download_dir();
+          dirDisplay.textContent = currentDownloadDir;
+        }
+      }
+    });
 
     window.addEventListener('pywebviewready', async () => {
       const api = await getApi();

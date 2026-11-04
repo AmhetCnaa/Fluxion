@@ -1,0 +1,1646 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fluxion — Media Stream Engine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #09090b;
+      --bg-panel: #121215;
+      --bg-elevated: #18181c;
+      --bg-recessed: #0c0c0e;
+      
+      --border-subtle: rgba(255, 255, 255, 0.07);
+      --border-hover: rgba(255, 255, 255, 0.14);
+      --border-focus: rgba(255, 255, 255, 0.28);
+      --inner-light: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+
+      --text-primary: #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-muted: #71717a;
+      --text-dim: #52525b;
+
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-danger: #ef4444;
+
+      --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg-base);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px;
+      position: relative;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    /* Architectural subtle grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: 
+        radial-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+      background-size: 24px 24px;
+      mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 30%, transparent 100%);
+      -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 30%, transparent 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Subtle top ambient light */
+    body::after {
+      content: '';
+      position: fixed;
+      top: -180px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 700px;
+      height: 320px;
+      background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+      filter: blur(50px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .workspace {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 720px;
+      margin: auto 0;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Top Bar */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 4px 6px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      background: linear-gradient(180deg, #27272a 0%, #18181b 100%);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fafafa;
+      transition: transform 0.3s var(--ease-spring), border-color 0.3s ease;
+    }
+
+    .brand:hover .brand-mark {
+      transform: scale(1.05) rotate(-3deg);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .brand-text {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .brand-name {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .version-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .brand-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .telemetry-pills {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Language Switcher */
+    .lang-switcher {
+      display: inline-flex;
+      align-items: center;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      box-shadow: var(--inner-light);
+      border-radius: 9999px;
+      padding: 2px;
+      gap: 2px;
+    }
+
+    .lang-btn {
+      background: transparent;
+      border: none;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      padding: 2.5px 8px;
+      border-radius: 9999px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .lang-btn:hover {
+      color: var(--text-secondary);
+    }
+
+    .lang-btn.active {
+      background: #27272c;
+      color: #fafafa;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 11px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      box-shadow: var(--inner-light);
+      border-radius: 9999px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .status-dot {
+      position: relative;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+    }
+
+    .status-dot::after {
+      content: '';
+      position: absolute;
+      inset: -3px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      opacity: 0.4;
+      animation: pulse-ring 2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+    }
+
+    @keyframes pulse-ring {
+      0% { transform: scale(0.8); opacity: 0.6; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+
+    /* Interactive Spotlight Surface */
+    .surface {
+      position: relative;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      box-shadow: 
+        0 12px 32px -8px rgba(0, 0, 0, 0.5),
+        var(--inner-light);
+      overflow: hidden;
+      transition: border-color 0.25s ease;
+    }
+
+    .surface::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(
+        500px circle at var(--mouse-x, -500px) var(--mouse-y, -500px),
+        rgba(255, 255, 255, 0.035),
+        transparent 40%
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .surface:hover {
+      border-color: var(--border-hover);
+    }
+
+    .surface-content {
+      position: relative;
+      z-index: 1;
+      padding: 18px;
+    }
+
+    /* URL Input Deck */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .platform-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-muted);
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid transparent;
+      transition: all 0.3s var(--ease-spring);
+    }
+
+    .platform-badge.detected {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.14);
+    }
+
+    .url-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-recessed);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 5px 5px 5px 14px;
+      transition: border-color 0.25s var(--ease-spring), box-shadow 0.25s var(--ease-spring);
+    }
+
+    .url-bar:focus-within {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.05);
+    }
+
+    .url-icon {
+      color: var(--text-muted);
+      flex-shrink: 0;
+      transition: color 0.25s ease, transform 0.3s var(--ease-spring);
+    }
+
+    .url-bar:focus-within .url-icon {
+      color: var(--text-primary);
+      transform: scale(1.08);
+    }
+
+    .url-input {
+      flex: 1;
+      height: 36px;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 13.5px;
+      font-weight: 400;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .url-input::placeholder {
+      color: var(--text-dim);
+    }
+
+    .btn-clear {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+
+    .btn-clear:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-primary);
+    }
+
+    .btn-action-secondary {
+      height: 36px;
+      padding: 0 13px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      box-shadow: var(--inner-light);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.2s var(--ease-spring);
+      flex-shrink: 0;
+    }
+
+    .btn-action-secondary:hover {
+      background: #222227;
+      border-color: var(--border-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-action-secondary:active {
+      transform: translateY(0) scale(0.97);
+    }
+
+    .kbd-hint {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--text-muted);
+      background: rgba(0, 0, 0, 0.35);
+      padding: 1px 5px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    /* Smooth Accordion Preview Card */
+    .preview-wrapper {
+      display: grid;
+      grid-template-rows: 0fr;
+      opacity: 0;
+      transition: 
+        grid-template-rows 0.45s var(--ease-spring),
+        opacity 0.35s ease,
+        margin-top 0.45s var(--ease-spring);
+      margin-top: 0;
+    }
+
+    .preview-wrapper.open {
+      grid-template-rows: 1fr;
+      opacity: 1;
+      margin-top: 12px;
+    }
+
+    .preview-inner {
+      overflow: hidden;
+    }
+
+    .preview-box {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 10px;
+      background: var(--bg-recessed);
+      border: 1px solid var(--border-subtle);
+      border-radius: 11px;
+    }
+
+    .thumb-wrap {
+      position: relative;
+      width: 116px;
+      height: 66px;
+      border-radius: 7px;
+      overflow: hidden;
+      background: #16161a;
+      flex-shrink: 0;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .thumb-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      transform: scale(1.05);
+      transition: opacity 0.4s ease, transform 0.5s var(--ease-spring);
+    }
+
+    .thumb-img.loaded {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .thumb-duration {
+      position: absolute;
+      bottom: 4px;
+      right: 4px;
+      background: rgba(9, 9, 11, 0.85);
+      backdrop-filter: blur(4px);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .preview-details {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .preview-title {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      letter-spacing: -0.01em;
+    }
+
+    .preview-sub {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .quality-chip {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--accent-emerald);
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    /* Controls Grid */
+    .controls-row {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 14px;
+    }
+
+    /* ULTRA-SMOOTH GLIDING SEGMENTED CONTROL */
+    .segmented-track {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--bg-recessed);
+      border: 1px solid var(--border-subtle);
+      border-radius: 11px;
+      padding: 4px;
+      height: 46px;
+      user-select: none;
+    }
+
+    /* The Physical Gliding Pill */
+    .segment-glider {
+      position: absolute;
+      top: 4px;
+      bottom: 4px;
+      left: 4px;
+      width: calc(50% - 4px);
+      background: linear-gradient(180deg, #27272c 0%, #1c1c21 100%);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 
+        0 4px 12px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      transform: translate3d(0%, 0, 0);
+      transition: transform 0.42s cubic-bezier(0.18, 0.89, 0.32, 1.08), background 0.3s ease;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .segmented-track[data-selected="mp3"] .segment-glider {
+      transform: translate3d(100%, 0, 0);
+    }
+
+    .segment-btn {
+      position: relative;
+      z-index: 2;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 12.5px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      white-space: nowrap;
+      transition: color 0.3s ease, transform 0.2s var(--ease-spring);
+    }
+
+    .segment-btn:hover {
+      color: var(--text-secondary);
+    }
+
+    .segment-btn:active {
+      transform: scale(0.96);
+    }
+
+    .segment-btn.active {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .segment-btn svg {
+      transition: transform 0.35s var(--ease-spring), color 0.3s ease;
+    }
+
+    .segment-btn.active svg {
+      transform: scale(1.1);
+      color: #fff;
+    }
+
+    .spec-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 600;
+      padding: 1.5px 5px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      transition: all 0.3s ease;
+    }
+
+    .segment-btn.active .spec-pill {
+      background: rgba(255, 255, 255, 0.14);
+      color: #fff;
+    }
+
+    /* Folder Selector Dock */
+    .folder-dock {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-recessed);
+      border: 1px solid var(--border-subtle);
+      border-radius: 11px;
+      padding: 4px 4px 4px 12px;
+      height: 46px;
+    }
+
+    .folder-path {
+      flex: 1;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      direction: rtl;
+      text-align: left;
+    }
+
+    .btn-dock {
+      height: 36px;
+      padding: 0 11px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      box-shadow: var(--inner-light);
+      border-radius: 7px;
+      color: var(--text-secondary);
+      font-family: inherit;
+      font-size: 11.5px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s var(--ease-spring);
+      flex-shrink: 0;
+    }
+
+    .btn-dock:hover {
+      color: var(--text-primary);
+      background: #222227;
+      border-color: var(--border-hover);
+    }
+
+    .btn-dock:active {
+      transform: scale(0.96);
+    }
+
+    /* Primary Studio CTA Button */
+    .btn-primary-cta {
+      position: relative;
+      width: 100%;
+      height: 52px;
+      border-radius: 13px;
+      background: linear-gradient(180deg, #fafafa 0%, #e4e4e7 100%);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 
+        0 1px 2px rgba(0, 0, 0, 0.3),
+        0 8px 24px -4px rgba(255, 255, 255, 0.12),
+        inset 0 1px 0 #ffffff;
+      color: #09090b;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      overflow: hidden;
+      transition: 
+        transform 0.25s var(--ease-spring),
+        box-shadow 0.25s var(--ease-spring),
+        background 0.25s ease;
+    }
+
+    .btn-primary-cta::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -60%;
+      width: 40%;
+      height: 200%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+      transform: rotate(25deg);
+      transition: transform 0.65s var(--ease-out-expo);
+      pointer-events: none;
+    }
+
+    .btn-primary-cta:hover {
+      transform: translateY(-1.5px);
+      box-shadow: 
+        0 4px 12px rgba(0, 0, 0, 0.4),
+        0 12px 32px -4px rgba(255, 255, 255, 0.22),
+        inset 0 1px 0 #ffffff;
+    }
+
+    .btn-primary-cta:hover::after {
+      transform: rotate(25deg) translateX(380%);
+    }
+
+    .btn-primary-cta:hover .cta-arrow {
+      transform: translateY(2px);
+    }
+
+    .btn-primary-cta:active {
+      transform: translateY(0.5px) scale(0.99);
+    }
+
+    .btn-primary-cta:disabled {
+      background: #1c1c21;
+      border-color: var(--border-subtle);
+      color: var(--text-secondary);
+      box-shadow: none;
+      cursor: default;
+      transform: none;
+    }
+
+    .cta-arrow {
+      transition: transform 0.25s var(--ease-spring);
+    }
+
+    /* Live Telemetry & Progress Drawer */
+    .telemetry-drawer {
+      display: grid;
+      grid-template-rows: 0fr;
+      opacity: 0;
+      transition: 
+        grid-template-rows 0.45s var(--ease-spring),
+        opacity 0.35s ease;
+    }
+
+    .telemetry-drawer.open {
+      grid-template-rows: 1fr;
+      opacity: 1;
+    }
+
+    .telemetry-inner {
+      overflow: hidden;
+    }
+
+    .telemetry-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: 15px;
+      padding: 16px 18px;
+      box-shadow: var(--inner-light);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .telemetry-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .telemetry-state {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .spinner {
+      width: 15px;
+      height: 15px;
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      border-top-color: var(--text-primary);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 6px;
+      background: var(--bg-recessed);
+      border-radius: 9999px;
+      overflow: hidden;
+      position: relative;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #a1a1aa 0%, #fafafa 100%);
+      border-radius: 9999px;
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
+      transition: width 0.25s var(--ease-spring);
+    }
+
+    .progress-fill.done {
+      background: var(--accent-emerald);
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .stat-box {
+      background: var(--bg-recessed);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 9px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .stat-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Completion Toast inside Drawer */
+    .completed-bar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 4px;
+      border-top: 1px solid var(--border-subtle);
+      margin-top: 2px;
+      animation: slideUp 0.35s var(--ease-spring);
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .completed-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--accent-emerald);
+      font-weight: 500;
+      min-width: 0;
+    }
+
+    .completed-filename {
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 340px;
+    }
+
+    /* Footer */
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 6px 0;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .footer-specs {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px;
+    }
+
+    .icon {
+      width: 15px;
+      height: 15px;
+      stroke: currentColor;
+      stroke-width: 1.75;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="workspace">
+    <!-- Top Header -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">
+          <svg class="icon" style="width: 18px; height: 18px;" viewBox="0 0 24 24">
+            <path d="M12 3v12"></path>
+            <path d="m8 11 4 4 4-4"></path>
+            <path d="M8 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4"></path>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <div class="brand-name">
+            <span>Fluxion</span>
+            <span class="version-tag">STUDIO PRO</span>
+          </div>
+          <div class="brand-desc" data-i18n="brand_desc">Ultra-Fast Media & Audio Stream Engine</div>
+        </div>
+      </div>
+
+      <div class="telemetry-pills">
+        <!-- Language Switcher -->
+        <div class="lang-switcher">
+          <button type="button" id="langBtnEn" class="lang-btn active" onclick="setLanguage('en')">EN</button>
+          <button type="button" id="langBtnTr" class="lang-btn" onclick="setLanguage('tr')">TR</button>
+        </div>
+
+        <div class="status-pill">
+          <span class="status-dot"></span>
+          <span id="engineStatusLabel" data-i18n="engine_active">16-CH ARIA2 ACTIVE</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main URL & Inspector Surface -->
+    <section class="surface" onmousemove="trackSpotlight(event, this)">
+      <div class="surface-content">
+        <div class="section-header">
+          <div class="section-label">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+            <span data-i18n="section_media">Media Link</span>
+          </div>
+          <span id="platformBadge" class="platform-badge" data-i18n="platform_auto">AUTO DETECT</span>
+        </div>
+
+        <div class="url-bar">
+          <svg id="urlTypeIcon" class="icon url-icon" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input 
+            type="text" 
+            id="urlInput" 
+            class="url-input" 
+            data-i18n-placeholder="url_placeholder"
+            placeholder="Paste YouTube, Instagram, TikTok, X, or Twitch URL..."
+            spellcheck="false"
+            autocomplete="off"
+          >
+          <button id="clearBtn" class="btn-clear" data-i18n-title="btn_clear_title" title="Clear">
+            <svg class="icon" style="width: 14px; height: 14px;" viewBox="0 0 24 24">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+          <button id="pasteBtn" class="btn-action-secondary">
+            <svg class="icon" style="width: 14px; height: 14px;" viewBox="0 0 24 24">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span data-i18n="btn_paste">Paste</span>
+            <span class="kbd-hint">Ctrl+V</span>
+          </button>
+        </div>
+
+        <!-- Smooth Expandable Media Inspector -->
+        <div id="previewWrapper" class="preview-wrapper">
+          <div class="preview-inner">
+            <div class="preview-box">
+              <div class="thumb-wrap">
+                <img id="previewThumb" class="thumb-img" src="" alt="">
+                <span id="previewDuration" class="thumb-duration">00:00</span>
+              </div>
+              <div class="preview-details">
+                <div id="previewTitle" class="preview-title" data-i18n="preview_analyzing">Resolving media metadata...</div>
+                <div class="preview-sub">
+                  <span id="previewAuthor" data-i18n="preview_connecting">Connecting</span>
+                  <span>•</span>
+                  <span id="previewStreamSpec" class="quality-chip" data-i18n="preview_stream_ready">LOSSLESS STREAM READY</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dual Configuration Deck -->
+    <div class="controls-row">
+      <!-- Gliding Format Switcher -->
+      <section class="surface" onmousemove="trackSpotlight(event, this)">
+        <div class="surface-content">
+          <div class="section-header">
+            <div class="section-label">
+              <svg class="icon" viewBox="0 0 24 24">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                <polyline points="2 17 12 22 22 17"></polyline>
+                <polyline points="2 12 12 17 22 12"></polyline>
+              </svg>
+              <span data-i18n="section_format">Output Format</span>
+            </div>
+          </div>
+
+          <div id="formatTrack" class="segmented-track" data-selected="mp4">
+            <div class="segment-glider"></div>
+            
+            <button type="button" id="fmtMp4" class="segment-btn active" data-format="mp4">
+              <svg class="icon" viewBox="0 0 24 24">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+              </svg>
+              <span data-i18n="fmt_mp4">MP4 Video</span>
+              <span class="spec-pill">MAX</span>
+            </button>
+
+            <button type="button" id="fmtMp3" class="segment-btn" data-format="mp3">
+              <svg class="icon" viewBox="0 0 24 24">
+                <path d="M9 18V5l12-2v13"></path>
+                <circle cx="6" cy="18" r="3"></circle>
+                <circle cx="18" cy="16" r="3"></circle>
+              </svg>
+              <span data-i18n="fmt_mp3">MP3 Audio</span>
+              <span class="spec-pill">320K</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Target Folder Dock -->
+      <section class="surface" onmousemove="trackSpotlight(event, this)">
+        <div class="surface-content">
+          <div class="section-header">
+            <div class="section-label">
+              <svg class="icon" viewBox="0 0 24 24">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span data-i18n="section_dir">Output Directory</span>
+            </div>
+          </div>
+
+          <div class="folder-dock">
+            <div id="dirDisplay" class="folder-path" title="Output Directory">Downloads\Fluxion</div>
+            <button type="button" id="browseBtn" class="btn-dock" data-i18n-title="btn_browse" title="Select Folder">
+              <span data-i18n="btn_browse">Select</span>
+            </button>
+            <button type="button" id="quickOpenBtn" class="btn-dock" data-i18n-title="btn_open_folder" title="Open Folder">
+              <svg class="icon" style="width: 14px; height: 14px;" viewBox="0 0 24 24">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Primary CTA Button -->
+    <button type="button" id="downloadBtn" class="btn-primary-cta">
+      <svg class="icon cta-arrow" style="width: 17px; height: 17px; stroke-width: 2.2;" viewBox="0 0 24 24">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+      </svg>
+      <span id="ctaText">Download as MP4 Video</span>
+    </button>
+
+    <!-- Live Telemetry & Progress Drawer -->
+    <div id="telemetryDrawer" class="telemetry-drawer">
+      <div class="telemetry-inner">
+        <div class="telemetry-card">
+          <div class="telemetry-top">
+            <div class="telemetry-state">
+              <div id="stateSpinner" class="spinner"></div>
+              <svg id="stateCheck" class="icon" style="display: none; color: var(--accent-emerald);" viewBox="0 0 24 24">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              <span id="statusMessage">Establishing 16-channel parallel connection...</span>
+            </div>
+            <span id="metricPercent" class="stat-val">%0.0</span>
+          </div>
+
+          <div class="progress-track">
+            <div id="progressBarFill" class="progress-fill"></div>
+          </div>
+
+          <div class="stats-row">
+            <div class="stat-box">
+              <span class="stat-label" data-i18n="stat_speed">Current Speed</span>
+              <span id="metricSpeed" class="stat-val">0.0 MB/s</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label" data-i18n="stat_eta">Remaining</span>
+              <span id="metricEta" class="stat-val">-- s</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label" data-i18n="stat_engine">Engine</span>
+              <span class="stat-val" style="color: var(--text-secondary);">ARIA2 16X</span>
+            </div>
+          </div>
+
+          <div id="completedBar" class="completed-bar">
+            <div class="completed-info">
+              <span data-i18n="label_completed">Completed:</span>
+              <span id="resultTitle" class="completed-filename">video.mp4</span>
+            </div>
+            <button type="button" id="openFolderBtn" class="btn-action-secondary" style="height: 30px; font-size: 11.5px;">
+              <svg class="icon" style="width: 13px; height: 13px;" viewBox="0 0 24 24">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span data-i18n="btn_show_file">Show in Folder</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <span data-i18n="footer_title">Fluxion Media Engine</span>
+      <div class="footer-specs">
+        <span>FFMPEG 6.1 MUXER</span>
+        <span>•</span>
+        <span>EJS N-SIG UNTHROTTLED</span>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    // Spotlight mouse tracker
+    function trackSpotlight(e, el) {
+      const rect = el.getBoundingClientRect();
+      el.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
+      el.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
+    }
+
+    // Comprehensive Internationalization (Default: English)
+    const I18N = {
+      en: {
+        page_title: "Fluxion — Media Stream Engine",
+        brand_desc: "Ultra-Fast Media & Audio Stream Engine",
+        engine_active: "16-CH ARIA2 ACTIVE",
+        section_media: "Media Link",
+        platform_auto: "AUTO DETECT",
+        url_placeholder: "Paste YouTube, Instagram, TikTok, X, or Twitch URL...",
+        btn_paste: "Paste",
+        btn_clear_title: "Clear",
+        preview_analyzing: "Resolving media metadata...",
+        preview_connecting: "Connecting",
+        preview_stream_ready: "LOSSLESS STREAM READY",
+        section_format: "Output Format",
+        fmt_mp4: "MP4 Video",
+        fmt_mp3: "MP3 Audio",
+        section_dir: "Output Directory",
+        btn_browse: "Select",
+        btn_browse_title: "Select Directory",
+        btn_open_folder: "Open Folder",
+        btn_download_mp4: "Download as MP4 Video",
+        btn_download_mp3: "Download as MP3 Studio Audio",
+        btn_downloading: "Streaming Media...",
+        status_connecting: "Establishing 16-channel parallel connection...",
+        stat_speed: "Current Speed",
+        stat_eta: "Remaining",
+        stat_engine: "Engine",
+        eta_calc: "Calculating...",
+        eta_sec: "s",
+        status_downloading: "Downloading at maximum speed...",
+        status_muxing: "Lossless muxing with FFmpeg...",
+        status_done: "Download and muxing completed",
+        label_completed: "Completed:",
+        btn_show_file: "Show in Folder",
+        footer_title: "Fluxion Media Engine"
+      },
+      tr: {
+        page_title: "Fluxion — Medya & Ses Aktarım Stüdyosu",
+        brand_desc: "Yüksek Hızlı Medya & Ses Aktarım Motoru",
+        engine_active: "16-KANAL ARIA2 AKTİF",
+        section_media: "Medya Bağlantısı",
+        platform_auto: "OTOMATİK ALGILAMA",
+        url_placeholder: "YouTube, Instagram, TikTok, X veya Twitch bağlantısını yapıştırın...",
+        btn_paste: "Yapıştır",
+        btn_clear_title: "Temizle",
+        preview_analyzing: "Medya üst verileri çözümleniyor...",
+        preview_connecting: "Bağlanıyor",
+        preview_stream_ready: "KAYIPSIZ AKIŞ HAZIR",
+        section_format: "Çıktı Formatı",
+        fmt_mp4: "MP4 Video",
+        fmt_mp3: "MP3 Ses",
+        section_dir: "Kayıt Dizini",
+        btn_browse: "Seç",
+        btn_browse_title: "Klasörü Değiştir",
+        btn_open_folder: "Klasörü Aç",
+        btn_download_mp4: "MP4 Video Olarak İndir",
+        btn_download_mp3: "MP3 Stüdyo Sesi Olarak İndir",
+        btn_downloading: "Akış İndiriliyor...",
+        status_connecting: "16 kanallı paralel bağlantı kuruluyor...",
+        stat_speed: "Anlık Hız",
+        stat_eta: "Kalan Süre",
+        stat_engine: "Motor",
+        eta_calc: "Hesaplanıyor",
+        eta_sec: "sn",
+        status_downloading: "Yüksek hızda indiriliyor...",
+        status_muxing: "FFmpeg ile kayıpsız birleştiriliyor...",
+        status_done: "İndirme ve birleştirme tamamlandı",
+        label_completed: "Tamamlandı:",
+        btn_show_file: "Dosyayı Göster",
+        footer_title: "Fluxion Medya Motoru"
+      }
+    };
+
+    let currentLang = localStorage.getItem('fluxion_lang') || 'en';
+    let selectedFormat = 'mp4';
+    let currentDownloadDir = '';
+    let isDownloading = false;
+
+    function t(key) {
+      const dict = I18N[currentLang] || I18N.en;
+      return dict[key] || (I18N.en[key] || key);
+    }
+
+    function setLanguage(lang) {
+      if (!I18N[lang]) lang = 'en';
+      currentLang = lang;
+      localStorage.setItem('fluxion_lang', lang);
+
+      const dict = I18N[lang];
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const k = el.getAttribute('data-i18n');
+        if (dict[k]) el.textContent = dict[k];
+      });
+
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const k = el.getAttribute('data-i18n-placeholder');
+        if (dict[k]) el.placeholder = dict[k];
+      });
+
+      document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const k = el.getAttribute('data-i18n-title');
+        if (dict[k]) el.title = dict[k];
+      });
+
+      document.title = dict.page_title;
+
+      const btnEn = document.getElementById('langBtnEn');
+      const btnTr = document.getElementById('langBtnTr');
+      if (btnEn) btnEn.classList.toggle('active', lang === 'en');
+      if (btnTr) btnTr.classList.toggle('active', lang === 'tr');
+
+      if (!isDownloading) {
+        ctaText.textContent = selectedFormat === 'mp4' ? dict.btn_download_mp4 : dict.btn_download_mp3;
+      }
+    }
+
+    async function getApi() {
+      if (window.Android) {
+        return window.Android;
+      }
+      if (window.pywebview && window.pywebview.api && typeof window.pywebview.api.start_download === 'function') {
+        return window.pywebview.api;
+      }
+      return new Promise((resolve) => {
+        let attempts = 0;
+        const timer = setInterval(() => {
+          attempts++;
+          if (window.pywebview && window.pywebview.api && typeof window.pywebview.api.start_download === 'function') {
+            clearInterval(timer);
+            resolve(window.pywebview.api);
+          } else if (attempts > 30) {
+            clearInterval(timer);
+            resolve(window.pywebview ? window.pywebview.api : null);
+          }
+        }, 100);
+
+        window.addEventListener('pywebviewready', () => {
+          clearInterval(timer);
+          resolve(window.pywebview ? window.pywebview.api : null);
+        }, { once: true });
+      });
+    }
+
+    // Elements
+    const urlInput = document.getElementById('urlInput');
+    const clearBtn = document.getElementById('clearBtn');
+    const pasteBtn = document.getElementById('pasteBtn');
+    const platformBadge = document.getElementById('platformBadge');
+    const formatTrack = document.getElementById('formatTrack');
+    const fmtMp4 = document.getElementById('fmtMp4');
+    const fmtMp3 = document.getElementById('fmtMp3');
+    const ctaText = document.getElementById('ctaText');
+    const dirDisplay = document.getElementById('dirDisplay');
+    const browseBtn = document.getElementById('browseBtn');
+    const quickOpenBtn = document.getElementById('quickOpenBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const previewWrapper = document.getElementById('previewWrapper');
+    const previewThumb = document.getElementById('previewThumb');
+    const previewTitle = document.getElementById('previewTitle');
+    const previewAuthor = document.getElementById('previewAuthor');
+    const previewDuration = document.getElementById('previewDuration');
+    const telemetryDrawer = document.getElementById('telemetryDrawer');
+    const progressBarFill = document.getElementById('progressBarFill');
+    const statusMessage = document.getElementById('statusMessage');
+    const stateSpinner = document.getElementById('stateSpinner');
+    const stateCheck = document.getElementById('stateCheck');
+    const metricPercent = document.getElementById('metricPercent');
+    const metricSpeed = document.getElementById('metricSpeed');
+    const metricEta = document.getElementById('metricEta');
+    const completedBar = document.getElementById('completedBar');
+    const resultTitle = document.getElementById('resultTitle');
+    const openFolderBtn = document.getElementById('openFolderBtn');
+
+    // Gliding Segmented Format Switcher
+    function setFormat(fmt) {
+      if (isDownloading) return;
+      selectedFormat = fmt;
+      formatTrack.setAttribute('data-selected', fmt);
+      if (fmt === 'mp4') {
+        fmtMp4.classList.add('active');
+        fmtMp3.classList.remove('active');
+        ctaText.textContent = t('btn_download_mp4');
+      } else {
+        fmtMp3.classList.add('active');
+        fmtMp4.classList.remove('active');
+        ctaText.textContent = t('btn_download_mp3');
+      }
+    }
+
+    fmtMp4.addEventListener('click', () => setFormat('mp4'));
+    fmtMp3.addEventListener('click', () => setFormat('mp3'));
+
+    // Platform detector
+    function detectPlatform(url) {
+      const u = url.toLowerCase();
+      if (!u.startsWith('http')) {
+        platformBadge.textContent = t('platform_auto');
+        platformBadge.classList.remove('detected');
+        return;
+      }
+      platformBadge.classList.add('detected');
+      if (u.includes('youtube.com') || u.includes('youtu.be')) {
+        platformBadge.textContent = 'YOUTUBE HD';
+      } else if (u.includes('instagram.com')) {
+        platformBadge.textContent = 'INSTAGRAM REELS';
+      } else if (u.includes('tiktok.com')) {
+        platformBadge.textContent = 'TIKTOK RAW';
+      } else if (u.includes('twitter.com') || u.includes('x.com')) {
+        platformBadge.textContent = 'X / TWITTER';
+      } else if (u.includes('twitch.tv')) {
+        platformBadge.textContent = 'TWITCH CLIP';
+      } else if (u.includes('soundcloud.com')) {
+        platformBadge.textContent = 'SOUNDCLOUD';
+      } else {
+        platformBadge.textContent = 'STREAM SOURCE';
+      }
+    }
+
+    // Clear input
+    clearBtn.addEventListener('click', () => {
+      urlInput.value = '';
+      clearBtn.style.display = 'none';
+      previewWrapper.classList.remove('open');
+      detectPlatform('');
+      urlInput.focus();
+    });
+
+    // Hardened Crash-Proof Paste Button
+    pasteBtn.addEventListener('click', async () => {
+      try {
+        let text = '';
+        // 1. Try PyWebView API bridge (safe 64-bit ctypes)
+        try {
+          const api = await getApi();
+          if (api && typeof api.get_clipboard === 'function') {
+            text = await api.get_clipboard();
+          }
+        } catch (apiErr) {
+          console.warn('Bridge clipboard lookup:', apiErr);
+        }
+
+        // 2. Fallback to standard navigator.clipboard
+        if (!text && navigator.clipboard && navigator.clipboard.readText) {
+          try {
+            text = await navigator.clipboard.readText();
+          } catch (navErr) {
+            console.warn('Navigator clipboard fallback:', navErr);
+          }
+        }
+
+        if (text) {
+          const clean = text.trim();
+          urlInput.value = clean;
+          clearBtn.style.display = clean ? 'flex' : 'none';
+          detectPlatform(clean);
+          onUrlChanged(clean);
+        } else {
+          urlInput.focus();
+        }
+      } catch (err) {
+        console.error('Safe paste handler error:', err);
+      }
+    });
+
+    let debounceTimer = null;
+    urlInput.addEventListener('input', (e) => {
+      const val = e.target.value.trim();
+      clearBtn.style.display = val ? 'flex' : 'none';
+      detectPlatform(val);
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        onUrlChanged(val);
+      }, 400);
+    });
+
+    urlInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        startDownload();
+      }
+    });
+
+    previewThumb.addEventListener('load', () => {
+      previewThumb.classList.add('loaded');
+    });
+
+    async function onUrlChanged(url) {
+      if (!url || !url.startsWith('http')) {
+        previewWrapper.classList.remove('open');
+        return;
+      }
+      try {
+        const api = await getApi();
+        if (api && typeof api.get_info === 'function') {
+          previewWrapper.classList.add('open');
+          previewThumb.classList.remove('loaded');
+          previewTitle.textContent = t('preview_analyzing');
+          previewAuthor.textContent = t('preview_connecting');
+          previewDuration.textContent = '--:--';
+
+          const info = await api.get_info(url);
+          if (info && info.title && !info.error) {
+            previewTitle.textContent = info.title;
+            previewAuthor.textContent = info.uploader || 'Creator';
+            const totalSec = Number(info.duration || 0);
+            const mins = Math.floor(totalSec / 60);
+            const secs = totalSec % 60;
+            previewDuration.textContent = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+            if (info.thumbnail) {
+              previewThumb.src = info.thumbnail;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Preview error:', err);
+      }
+    }
+
+    // Browse directory
+    browseBtn.addEventListener('click', async () => {
+      if (isDownloading) return;
+      const api = await getApi();
+      if (api && typeof api.select_directory === 'function') {
+        const chosen = await api.select_directory();
+        if (chosen) {
+          currentDownloadDir = chosen;
+          dirDisplay.textContent = chosen;
+        }
+      }
+    });
+
+    quickOpenBtn.addEventListener('click', async () => {
+      const api = await getApi();
+      if (api && typeof api.open_download_folder === 'function') {
+        api.open_download_folder();
+      }
+    });
+
+    openFolderBtn.addEventListener('click', async () => {
+      const api = await getApi();
+      if (api && typeof api.open_download_folder === 'function') {
+        api.open_download_folder();
+      }
+    });
+
+    // Download Execution
+    downloadBtn.addEventListener('click', startDownload);
+
+    async function startDownload() {
+      if (isDownloading) return;
+      const url = urlInput.value.trim();
+      if (!url || !url.startsWith('http')) {
+        urlInput.focus();
+        return;
+      }
+
+      isDownloading = true;
+      downloadBtn.disabled = true;
+      ctaText.textContent = t('btn_downloading');
+
+      telemetryDrawer.classList.add('open');
+      completedBar.style.display = 'none';
+      stateSpinner.style.display = 'block';
+      stateCheck.style.display = 'none';
+      progressBarFill.classList.remove('done');
+      progressBarFill.style.width = '0%';
+
+      statusMessage.textContent = t('status_connecting');
+      metricPercent.textContent = '%0.0';
+      metricSpeed.textContent = '0.0 MB/s';
+      metricEta.textContent = `-- ${t('eta_sec')}`;
+
+      try {
+        const api = await getApi();
+        if (!api || typeof api.start_download !== 'function') {
+          throw new Error('Engine bridge initialization failed.');
+        }
+        const res = await api.start_download(url, selectedFormat, currentDownloadDir);
+        onDownloadFinished(res);
+      } catch (err) {
+        statusMessage.textContent = 'Error: ' + (err.message || err);
+        stateSpinner.style.display = 'none';
+        resetUI();
+      }
+    }
+
+    window.onProgress = function(data) {
+      if (!data) return;
+      if (data.status === 'downloading') {
+        const pct = Math.min(100, Math.max(0, data.percent || 0)).toFixed(1);
+        progressBarFill.style.width = `${pct}%`;
+        metricPercent.textContent = `%${pct}`;
+        
+        const speed = data.speed || 0;
+        const speedStr = speed > 1024 * 1024 
+          ? (speed / (1024 * 1024)).toFixed(1) + ' MB/s'
+          : (speed / 1024).toFixed(0) + ' KB/s';
+        metricSpeed.textContent = speedStr;
+
+        const eta = data.eta || 0;
+        metricEta.textContent = eta > 0 ? `${eta} ${t('eta_sec')}` : t('eta_calc');
+        statusMessage.textContent = t('status_downloading');
+      } else if (data.status === 'processing') {
+        progressBarFill.style.width = '96%';
+        statusMessage.textContent = t('status_muxing');
+      }
+    };
+
+    function onDownloadFinished(res) {
+      isDownloading = false;
+      progressBarFill.style.width = '100%';
+      progressBarFill.classList.add('done');
+      metricPercent.textContent = '%100';
+      metricEta.textContent = `0 ${t('eta_sec')}`;
+      stateSpinner.style.display = 'none';
+      stateCheck.style.display = 'block';
+      statusMessage.textContent = t('status_done');
+
+      completedBar.style.display = 'flex';
+      resultTitle.textContent = (res && res.title) ? res.title : 'File saved';
+
+      resetUI();
+    }
+
+    function resetUI() {
+      isDownloading = false;
+      downloadBtn.disabled = false;
+      setFormat(selectedFormat);
+    }
+
+    // Handle shared incoming URLs on Android / external triggers
+    window.onSharedUrlReceived = function(url) {
+      if (url && url.startsWith('http')) {
+        urlInput.value = url;
+        clearBtn.style.display = 'flex';
+        detectPlatform(url);
+        onUrlChanged(url);
+      }
+    };
+
+    // Initialize Language & Bridge
+    setLanguage(currentLang);
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      if (window.Android) {
+        if (typeof window.Android.getSharedUrl === 'function') {
+          const shared = window.Android.getSharedUrl();
+          if (shared) window.onSharedUrlReceived(shared);
+        }
+        if (typeof window.Android.get_download_dir === 'function') {
+          currentDownloadDir = window.Android.get_download_dir();
+          dirDisplay.textContent = currentDownloadDir;
+        }
+      }
+    });
+
+    window.addEventListener('pywebviewready', async () => {
+      const api = await getApi();
+      if (api && typeof api.get_download_dir === 'function') {
+        currentDownloadDir = await api.get_download_dir();
+        dirDisplay.textContent = currentDownloadDir;
+      }
+    });
+  </script>
+</body>
+</html>

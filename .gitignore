@@ -12,6 +12,11 @@ build/
 dist/
 *.spec
 
+# Android Build Outputs
+.gradle/
+**/build/
+**/local.properties
+
 # Python
 __pycache__/
 *.py[cod]
