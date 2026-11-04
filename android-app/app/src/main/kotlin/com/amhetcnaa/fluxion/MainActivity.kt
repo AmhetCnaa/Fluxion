@@ -1,6 +1,7 @@
 package com.amhetcnaa.fluxion
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.app.DownloadManager
 import android.content.ClipboardManager
 import android.content.Context
@@ -11,13 +12,13 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.view.WindowInsetsController
+import android.view.WindowManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.app.Activity
 import android.widget.Toast
 
 class MainActivity : Activity() {
@@ -29,66 +30,74 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Edge-to-edge dark obsidian status bar styling
-        window.statusBarColor = Color.parseColor("#09090b")
-        window.navigationBarColor = Color.parseColor("#09090b")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.insetsController?.setSystemBarsAppearance(
-                0,
-                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-            )
-        }
-
-        handleIncomingIntent(intent)
-
-        webView = WebView(this).apply {
-            setBackgroundColor(Color.parseColor("#09090b"))
-            settings.apply {
-                javaScriptEnabled = true
-                domStorageEnabled = true
-                databaseEnabled = true
-                allowFileAccess = true
-                allowContentAccess = true
-                loadWithOverviewMode = true
-                useWideViewPort = true
-                cacheMode = WebSettings.LOAD_DEFAULT
+        try {
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+            window.statusBarColor = Color.parseColor("#09090b")
+            window.navigationBarColor = Color.parseColor("#09090b")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                window.insetsController?.setSystemBarsAppearance(
+                    0,
+                    WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                )
             }
+        } catch (ignored: Throwable) {}
 
-            webViewClient = object : WebViewClient() {
-                override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                    val url = request?.url?.toString() ?: return false
-                    if (url.startsWith("file:///android_asset/")) {
-                        return false
+        try {
+            handleIncomingIntent(intent)
+
+            webView = WebView(this).apply {
+                setBackgroundColor(Color.parseColor("#09090b"))
+                settings.apply {
+                    javaScriptEnabled = true
+                    domStorageEnabled = true
+                    allowFileAccess = true
+                    allowContentAccess = true
+                    loadWithOverviewMode = true
+                    useWideViewPort = true
+                    cacheMode = WebSettings.LOAD_DEFAULT
+                }
+
+                webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                        val url = request?.url?.toString() ?: return false
+                        if (url.startsWith("file:///android_asset/")) {
+                            return false
+                        }
+                        return try {
+                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                            true
+                        } catch (e: Exception) {
+                            false
+                        }
                     }
-                    return try {
-                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                        true
-                    } catch (e: Exception) {
-                        false
+
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        super.onPageFinished(view, url)
+                        if (sharedUrl.isNotEmpty()) {
+                            evaluateJs("if (window.onSharedUrlReceived) { window.onSharedUrlReceived('${sharedUrl}'); }")
+                        }
                     }
                 }
 
-                override fun onPageFinished(view: WebView?, url: String?) {
-                    super.onPageFinished(view, url)
-                    if (sharedUrl.isNotEmpty()) {
-                        evaluateJs("if (window.onSharedUrlReceived) { window.onSharedUrlReceived('${sharedUrl}'); }")
-                    }
-                }
+                webChromeClient = WebChromeClient()
+                addJavascriptInterface(AndroidBridge(this@MainActivity), "Android")
+                loadUrl("file:///android_asset/index.html")
             }
 
-            webChromeClient = WebChromeClient()
-            addJavascriptInterface(AndroidBridge(this@MainActivity), "Android")
-            loadUrl("file:///android_asset/index.html")
+            setContentView(webView)
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            Toast.makeText(this, "Fluxion error: ${e.message}", Toast.LENGTH_LONG).show()
         }
-
-        setContentView(webView)
     }
 
-    override fun onNewIntent(intent: Intent) {
+    override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-        handleIncomingIntent(intent)
-        if (sharedUrl.isNotEmpty() && this::webView.isInitialized) {
-            webView.evaluateJs("if (window.onSharedUrlReceived) { window.onSharedUrlReceived('${sharedUrl}'); }")
+        intent?.let {
+            handleIncomingIntent(it)
+            if (sharedUrl.isNotEmpty() && this::webView.isInitialized) {
+                webView.evaluateJs("if (window.onSharedUrlReceived) { window.onSharedUrlReceived('${sharedUrl}'); }")
+            }
         }
     }
 
@@ -102,11 +111,12 @@ class MainActivity : Activity() {
         }
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         if (this::webView.isInitialized && webView.canGoBack()) {
             webView.goBack()
         } else {
-            super.onBackPressed()
+            finish()
         }
     }
 
