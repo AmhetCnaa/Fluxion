@@ -1,0 +1,4 @@
+yt-dlp>=2025.01.01
+pywebview>=5.0.0
+mutagen>=1.47.0
+pyinstaller>=6.0.0

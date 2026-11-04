@@ -1,0 +1,36 @@
+# Binaries & Executables
+*.exe
+*.dll
+*.so
+*.dylib
+ffmpeg.exe
+aria2c.exe
+Fluxion.exe
+
+# PyInstaller / Build
+build/
+dist/
+*.spec
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.env
+.venv/
+env/
+
+# Media and temporary downloads
+*.mp4
+*.mp3
+*.m4a
+*.webm
+*.part
+*.ytdl
+*.aria2
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
