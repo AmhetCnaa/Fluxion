@@ -51,7 +51,7 @@ def find_binary(binary_name):
 class VideoDownloader:
     def __init__(self, download_dir=None):
         if not download_dir:
-            self.download_dir = os.path.join(os.path.expanduser("~"), "Downloads", "VideoDownloader")
+            self.download_dir = os.path.join(os.path.expanduser("~"), "Downloads", "Fluxion")
         else:
             self.download_dir = download_dir
         
@@ -80,10 +80,10 @@ class VideoDownloader:
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=False)
             return {
-                'title': info.get('title', 'Bilinmeyen Başlık'),
+                'title': info.get('title', 'Unknown Title'),
                 'duration': info.get('duration', 0),
                 'thumbnail': info.get('thumbnail', None),
-                'uploader': info.get('uploader', 'Bilinmeyen Yayıncı'),
+                'uploader': info.get('uploader', 'Unknown Channel'),
             }
 
     def download(self, url, format_type='mp4', progress_callback=None):

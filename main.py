@@ -9,11 +9,22 @@ import webview
 from downloader import VideoDownloader, get_base_dir, get_exe_dir
 
 def get_clipboard_text():
-    """Read UTF-16 text from Windows clipboard via Win32 API."""
+    """Read UTF-16 text safely from Windows clipboard without 64-bit truncation crashes."""
     try:
         user32 = ctypes.windll.user32
         kernel32 = ctypes.windll.kernel32
         CF_UNICODETEXT = 13
+
+        user32.OpenClipboard.argtypes = [ctypes.c_void_p]
+        user32.OpenClipboard.restype = ctypes.c_bool
+        user32.CloseClipboard.argtypes = []
+        user32.CloseClipboard.restype = ctypes.c_bool
+        user32.GetClipboardData.argtypes = [ctypes.c_uint]
+        user32.GetClipboardData.restype = ctypes.c_void_p
+        kernel32.GlobalLock.argtypes = [ctypes.c_void_p]
+        kernel32.GlobalLock.restype = ctypes.c_void_p
+        kernel32.GlobalUnlock.argtypes = [ctypes.c_void_p]
+        kernel32.GlobalUnlock.restype = ctypes.c_bool
 
         if user32.OpenClipboard(None):
             try:
@@ -21,13 +32,27 @@ def get_clipboard_text():
                 if h_glb:
                     p_glb = kernel32.GlobalLock(h_glb)
                     if p_glb:
-                        text = ctypes.c_wchar_p(p_glb).value
-                        kernel32.GlobalUnlock(h_glb)
-                        return text or ""
+                        try:
+                            val = ctypes.c_wchar_p(p_glb).value
+                            return val or ""
+                        finally:
+                            kernel32.GlobalUnlock(h_glb)
             finally:
                 user32.CloseClipboard()
     except Exception as e:
         print("Clipboard error:", e)
+
+    # Fail-safe secondary fallback
+    try:
+        res = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", "Get-Clipboard"],
+            capture_output=True,
+            text=True,
+            timeout=1.5
+        )
+        return res.stdout.strip()
+    except Exception:
+        pass
     return ""
 
 class DownloaderBridge:

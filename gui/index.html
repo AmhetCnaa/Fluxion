@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fluxion — Medya & Ses Aktarım Stüdyosu</title>
+  <title>Fluxion — Media Stream Engine</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -164,6 +164,41 @@
       display: flex;
       align-items: center;
       gap: 8px;
+    }
+
+    /* Language Switcher */
+    .lang-switcher {
+      display: inline-flex;
+      align-items: center;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      box-shadow: var(--inner-light);
+      border-radius: 9999px;
+      padding: 2px;
+      gap: 2px;
+    }
+
+    .lang-btn {
+      background: transparent;
+      border: none;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      padding: 2.5px 8px;
+      border-radius: 9999px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .lang-btn:hover {
+      color: var(--text-secondary);
+    }
+
+    .lang-btn.active {
+      background: #27272c;
+      color: #fafafa;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
     }
 
     .status-pill {
@@ -908,14 +943,20 @@
             <span>Fluxion</span>
             <span class="version-tag">STUDIO PRO</span>
           </div>
-          <div class="brand-desc">Yüksek Hızlı Medya & Ses Aktarım Motoru</div>
+          <div class="brand-desc" data-i18n="brand_desc">Ultra-Fast Media & Audio Stream Engine</div>
         </div>
       </div>
 
       <div class="telemetry-pills">
+        <!-- Language Switcher -->
+        <div class="lang-switcher">
+          <button type="button" id="langBtnEn" class="lang-btn active" onclick="setLanguage('en')">EN</button>
+          <button type="button" id="langBtnTr" class="lang-btn" onclick="setLanguage('tr')">TR</button>
+        </div>
+
         <div class="status-pill">
           <span class="status-dot"></span>
-          <span>16-KANAL ARIA2 AKTİF</span>
+          <span id="engineStatusLabel" data-i18n="engine_active">16-CH ARIA2 ACTIVE</span>
         </div>
       </div>
     </header>
@@ -929,9 +970,9 @@
               <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
               <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
             </svg>
-            <span>Medya Bağlantısı</span>
+            <span data-i18n="section_media">Media Link</span>
           </div>
-          <span id="platformBadge" class="platform-badge">OTOMATİK ALGILAMA</span>
+          <span id="platformBadge" class="platform-badge" data-i18n="platform_auto">AUTO DETECT</span>
         </div>
 
         <div class="url-bar">
@@ -943,11 +984,12 @@
             type="text" 
             id="urlInput" 
             class="url-input" 
-            placeholder="YouTube, Instagram, TikTok, X veya Twitch bağlantısını yapıştırın..."
+            data-i18n-placeholder="url_placeholder"
+            placeholder="Paste YouTube, Instagram, TikTok, X, or Twitch URL..."
             spellcheck="false"
             autocomplete="off"
           >
-          <button id="clearBtn" class="btn-clear" title="Temizle">
+          <button id="clearBtn" class="btn-clear" data-i18n-title="btn_clear_title" title="Clear">
             <svg class="icon" style="width: 14px; height: 14px;" viewBox="0 0 24 24">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -958,7 +1000,7 @@
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
             </svg>
-            <span>Yapıştır</span>
+            <span data-i18n="btn_paste">Paste</span>
             <span class="kbd-hint">Ctrl+V</span>
           </button>
         </div>
@@ -972,11 +1014,11 @@
                 <span id="previewDuration" class="thumb-duration">00:00</span>
               </div>
               <div class="preview-details">
-                <div id="previewTitle" class="preview-title">Medya çözümleniyor...</div>
+                <div id="previewTitle" class="preview-title" data-i18n="preview_analyzing">Resolving media metadata...</div>
                 <div class="preview-sub">
-                  <span id="previewAuthor">Kaynak</span>
+                  <span id="previewAuthor" data-i18n="preview_connecting">Connecting</span>
                   <span>•</span>
-                  <span id="previewStreamSpec" class="quality-chip">KAYIPSIZ AKIŞ HAZIR</span>
+                  <span id="previewStreamSpec" class="quality-chip" data-i18n="preview_stream_ready">LOSSLESS STREAM READY</span>
                 </div>
               </div>
             </div>
@@ -997,7 +1039,7 @@
                 <polyline points="2 17 12 22 22 17"></polyline>
                 <polyline points="2 12 12 17 22 12"></polyline>
               </svg>
-              <span>Çıktı Formatı</span>
+              <span data-i18n="section_format">Output Format</span>
             </div>
           </div>
 
@@ -1010,7 +1052,7 @@
                 <line x1="8" y1="21" x2="16" y2="21"></line>
                 <line x1="12" y1="17" x2="12" y2="21"></line>
               </svg>
-              <span>MP4 Video</span>
+              <span data-i18n="fmt_mp4">MP4 Video</span>
               <span class="spec-pill">MAX</span>
             </button>
 
@@ -1020,7 +1062,7 @@
                 <circle cx="6" cy="18" r="3"></circle>
                 <circle cx="18" cy="16" r="3"></circle>
               </svg>
-              <span>MP3 Ses</span>
+              <span data-i18n="fmt_mp3">MP3 Audio</span>
               <span class="spec-pill">320K</span>
             </button>
           </div>
@@ -1035,16 +1077,16 @@
               <svg class="icon" viewBox="0 0 24 24">
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
               </svg>
-              <span>Kayıt Dizini</span>
+              <span data-i18n="section_dir">Output Directory</span>
             </div>
           </div>
 
           <div class="folder-dock">
-            <div id="dirDisplay" class="folder-path" title="Kayıt Klasörü">Downloads\Fluxion</div>
-            <button type="button" id="browseBtn" class="btn-dock" title="Klasörü Değiştir">
-              <span>Seç</span>
+            <div id="dirDisplay" class="folder-path" title="Output Directory">Downloads\Fluxion</div>
+            <button type="button" id="browseBtn" class="btn-dock" data-i18n-title="btn_browse" title="Select Folder">
+              <span data-i18n="btn_browse">Select</span>
             </button>
-            <button type="button" id="quickOpenBtn" class="btn-dock" title="Klasörü Aç">
+            <button type="button" id="quickOpenBtn" class="btn-dock" data-i18n-title="btn_open_folder" title="Open Folder">
               <svg class="icon" style="width: 14px; height: 14px;" viewBox="0 0 24 24">
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                 <polyline points="15 3 21 3 21 9"></polyline>
@@ -1063,7 +1105,7 @@
         <polyline points="7 10 12 15 17 10"></polyline>
         <line x1="12" y1="15" x2="12" y2="3"></line>
       </svg>
-      <span id="ctaText">MP4 Video Olarak İndir</span>
+      <span id="ctaText">Download as MP4 Video</span>
     </button>
 
     <!-- Live Telemetry & Progress Drawer -->
@@ -1077,7 +1119,7 @@
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                 <polyline points="22 4 12 14.01 9 11.01"></polyline>
               </svg>
-              <span id="statusMessage">16 kanallı paralel bağlantı kuruluyor...</span>
+              <span id="statusMessage">Establishing 16-channel parallel connection...</span>
             </div>
             <span id="metricPercent" class="stat-val">%0.0</span>
           </div>
@@ -1088,29 +1130,29 @@
 
           <div class="stats-row">
             <div class="stat-box">
-              <span class="stat-label">Anlık Hız</span>
+              <span class="stat-label" data-i18n="stat_speed">Current Speed</span>
               <span id="metricSpeed" class="stat-val">0.0 MB/s</span>
             </div>
             <div class="stat-box">
-              <span class="stat-label">Kalan Süre</span>
-              <span id="metricEta" class="stat-val">-- sn</span>
+              <span class="stat-label" data-i18n="stat_eta">Remaining</span>
+              <span id="metricEta" class="stat-val">-- s</span>
             </div>
             <div class="stat-box">
-              <span class="stat-label">Motor</span>
+              <span class="stat-label" data-i18n="stat_engine">Engine</span>
               <span class="stat-val" style="color: var(--text-secondary);">ARIA2 16X</span>
             </div>
           </div>
 
           <div id="completedBar" class="completed-bar">
             <div class="completed-info">
-              <span>Tamamlandı:</span>
+              <span data-i18n="label_completed">Completed:</span>
               <span id="resultTitle" class="completed-filename">video.mp4</span>
             </div>
             <button type="button" id="openFolderBtn" class="btn-action-secondary" style="height: 30px; font-size: 11.5px;">
               <svg class="icon" style="width: 13px; height: 13px;" viewBox="0 0 24 24">
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
               </svg>
-              <span>Dosyayı Göster</span>
+              <span data-i18n="btn_show_file">Show in Folder</span>
             </button>
           </div>
         </div>
@@ -1119,7 +1161,7 @@
 
     <!-- Footer -->
     <footer class="footer">
-      <span>Fluxion Media Engine</span>
+      <span data-i18n="footer_title">Fluxion Media Engine</span>
       <div class="footer-specs">
         <span>FFMPEG 6.1 MUXER</span>
         <span>•</span>
@@ -1136,9 +1178,122 @@
       el.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
     }
 
+    // Comprehensive Internationalization (Default: English)
+    const I18N = {
+      en: {
+        page_title: "Fluxion — Media Stream Engine",
+        brand_desc: "Ultra-Fast Media & Audio Stream Engine",
+        engine_active: "16-CH ARIA2 ACTIVE",
+        section_media: "Media Link",
+        platform_auto: "AUTO DETECT",
+        url_placeholder: "Paste YouTube, Instagram, TikTok, X, or Twitch URL...",
+        btn_paste: "Paste",
+        btn_clear_title: "Clear",
+        preview_analyzing: "Resolving media metadata...",
+        preview_connecting: "Connecting",
+        preview_stream_ready: "LOSSLESS STREAM READY",
+        section_format: "Output Format",
+        fmt_mp4: "MP4 Video",
+        fmt_mp3: "MP3 Audio",
+        section_dir: "Output Directory",
+        btn_browse: "Select",
+        btn_browse_title: "Select Directory",
+        btn_open_folder: "Open Folder",
+        btn_download_mp4: "Download as MP4 Video",
+        btn_download_mp3: "Download as MP3 Studio Audio",
+        btn_downloading: "Streaming Media...",
+        status_connecting: "Establishing 16-channel parallel connection...",
+        stat_speed: "Current Speed",
+        stat_eta: "Remaining",
+        stat_engine: "Engine",
+        eta_calc: "Calculating...",
+        eta_sec: "s",
+        status_downloading: "Downloading at maximum speed...",
+        status_muxing: "Lossless muxing with FFmpeg...",
+        status_done: "Download and muxing completed",
+        label_completed: "Completed:",
+        btn_show_file: "Show in Folder",
+        footer_title: "Fluxion Media Engine"
+      },
+      tr: {
+        page_title: "Fluxion — Medya & Ses Aktarım Stüdyosu",
+        brand_desc: "Yüksek Hızlı Medya & Ses Aktarım Motoru",
+        engine_active: "16-KANAL ARIA2 AKTİF",
+        section_media: "Medya Bağlantısı",
+        platform_auto: "OTOMATİK ALGILAMA",
+        url_placeholder: "YouTube, Instagram, TikTok, X veya Twitch bağlantısını yapıştırın...",
+        btn_paste: "Yapıştır",
+        btn_clear_title: "Temizle",
+        preview_analyzing: "Medya üst verileri çözümleniyor...",
+        preview_connecting: "Bağlanıyor",
+        preview_stream_ready: "KAYIPSIZ AKIŞ HAZIR",
+        section_format: "Çıktı Formatı",
+        fmt_mp4: "MP4 Video",
+        fmt_mp3: "MP3 Ses",
+        section_dir: "Kayıt Dizini",
+        btn_browse: "Seç",
+        btn_browse_title: "Klasörü Değiştir",
+        btn_open_folder: "Klasörü Aç",
+        btn_download_mp4: "MP4 Video Olarak İndir",
+        btn_download_mp3: "MP3 Stüdyo Sesi Olarak İndir",
+        btn_downloading: "Akış İndiriliyor...",
+        status_connecting: "16 kanallı paralel bağlantı kuruluyor...",
+        stat_speed: "Anlık Hız",
+        stat_eta: "Kalan Süre",
+        stat_engine: "Motor",
+        eta_calc: "Hesaplanıyor",
+        eta_sec: "sn",
+        status_downloading: "Yüksek hızda indiriliyor...",
+        status_muxing: "FFmpeg ile kayıpsız birleştiriliyor...",
+        status_done: "İndirme ve birleştirme tamamlandı",
+        label_completed: "Tamamlandı:",
+        btn_show_file: "Dosyayı Göster",
+        footer_title: "Fluxion Medya Motoru"
+      }
+    };
+
+    let currentLang = localStorage.getItem('fluxion_lang') || 'en';
     let selectedFormat = 'mp4';
     let currentDownloadDir = '';
     let isDownloading = false;
+
+    function t(key) {
+      const dict = I18N[currentLang] || I18N.en;
+      return dict[key] || (I18N.en[key] || key);
+    }
+
+    function setLanguage(lang) {
+      if (!I18N[lang]) lang = 'en';
+      currentLang = lang;
+      localStorage.setItem('fluxion_lang', lang);
+
+      const dict = I18N[lang];
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const k = el.getAttribute('data-i18n');
+        if (dict[k]) el.textContent = dict[k];
+      });
+
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const k = el.getAttribute('data-i18n-placeholder');
+        if (dict[k]) el.placeholder = dict[k];
+      });
+
+      document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const k = el.getAttribute('data-i18n-title');
+        if (dict[k]) el.title = dict[k];
+      });
+
+      document.title = dict.page_title;
+
+      const btnEn = document.getElementById('langBtnEn');
+      const btnTr = document.getElementById('langBtnTr');
+      if (btnEn) btnEn.classList.toggle('active', lang === 'en');
+      if (btnTr) btnTr.classList.toggle('active', lang === 'tr');
+
+      if (!isDownloading) {
+        ctaText.textContent = selectedFormat === 'mp4' ? dict.btn_download_mp4 : dict.btn_download_mp3;
+      }
+    }
 
     async function getApi() {
       if (window.pywebview && window.pywebview.api && typeof window.pywebview.api.start_download === 'function') {
@@ -1202,11 +1357,11 @@
       if (fmt === 'mp4') {
         fmtMp4.classList.add('active');
         fmtMp3.classList.remove('active');
-        ctaText.textContent = 'MP4 Video Olarak İndir';
+        ctaText.textContent = t('btn_download_mp4');
       } else {
         fmtMp3.classList.add('active');
         fmtMp4.classList.remove('active');
-        ctaText.textContent = 'MP3 Stüdyo Sesi Olarak İndir';
+        ctaText.textContent = t('btn_download_mp3');
       }
     }
 
@@ -1217,7 +1372,7 @@
     function detectPlatform(url) {
       const u = url.toLowerCase();
       if (!u.startsWith('http')) {
-        platformBadge.textContent = 'OTOMATİK ALGILAMA';
+        platformBadge.textContent = t('platform_auto');
         platformBadge.classList.remove('detected');
         return;
       }
@@ -1235,7 +1390,7 @@
       } else if (u.includes('soundcloud.com')) {
         platformBadge.textContent = 'SOUNDCLOUD';
       } else {
-        platformBadge.textContent = 'GENEL MEDYA';
+        platformBadge.textContent = 'STREAM SOURCE';
       }
     }
 
@@ -1248,25 +1403,40 @@
       urlInput.focus();
     });
 
-    // Paste button
+    // Hardened Crash-Proof Paste Button
     pasteBtn.addEventListener('click', async () => {
       try {
         let text = '';
-        const api = await getApi();
-        if (api && typeof api.get_clipboard === 'function') {
-          text = await api.get_clipboard();
-        } else if (navigator.clipboard) {
-          text = await navigator.clipboard.readText();
+        // 1. Try PyWebView API bridge (safe 64-bit ctypes)
+        try {
+          const api = await getApi();
+          if (api && typeof api.get_clipboard === 'function') {
+            text = await api.get_clipboard();
+          }
+        } catch (apiErr) {
+          console.warn('Bridge clipboard lookup:', apiErr);
         }
+
+        // 2. Fallback to standard navigator.clipboard
+        if (!text && navigator.clipboard && navigator.clipboard.readText) {
+          try {
+            text = await navigator.clipboard.readText();
+          } catch (navErr) {
+            console.warn('Navigator clipboard fallback:', navErr);
+          }
+        }
+
         if (text) {
           const clean = text.trim();
           urlInput.value = clean;
           clearBtn.style.display = clean ? 'flex' : 'none';
           detectPlatform(clean);
           onUrlChanged(clean);
+        } else {
+          urlInput.focus();
         }
       } catch (err) {
-        console.error('Clipboard error:', err);
+        console.error('Safe paste handler error:', err);
       }
     });
 
@@ -1301,14 +1471,14 @@
         if (api && typeof api.get_info === 'function') {
           previewWrapper.classList.add('open');
           previewThumb.classList.remove('loaded');
-          previewTitle.textContent = 'Medya üst verileri çözümleniyor...';
-          previewAuthor.textContent = 'Bağlanıyor';
+          previewTitle.textContent = t('preview_analyzing');
+          previewAuthor.textContent = t('preview_connecting');
           previewDuration.textContent = '--:--';
 
           const info = await api.get_info(url);
           if (info && info.title && !info.error) {
             previewTitle.textContent = info.title;
-            previewAuthor.textContent = info.uploader || 'Medya Kanalı';
+            previewAuthor.textContent = info.uploader || 'Creator';
             const totalSec = Number(info.duration || 0);
             const mins = Math.floor(totalSec / 60);
             const secs = totalSec % 60;
@@ -1363,7 +1533,7 @@
 
       isDownloading = true;
       downloadBtn.disabled = true;
-      ctaText.textContent = 'Akış İndiriliyor...';
+      ctaText.textContent = t('btn_downloading');
 
       telemetryDrawer.classList.add('open');
       completedBar.style.display = 'none';
@@ -1372,20 +1542,20 @@
       progressBarFill.classList.remove('done');
       progressBarFill.style.width = '0%';
 
-      statusMessage.textContent = '16 kanallı paralel bağlantı başlatılıyor...';
+      statusMessage.textContent = t('status_connecting');
       metricPercent.textContent = '%0.0';
       metricSpeed.textContent = '0.0 MB/s';
-      metricEta.textContent = '-- sn';
+      metricEta.textContent = `-- ${t('eta_sec')}`;
 
       try {
         const api = await getApi();
         if (!api || typeof api.start_download !== 'function') {
-          throw new Error('İndirme motoru bağlantısı kurulamadı.');
+          throw new Error('Engine bridge initialization failed.');
         }
         const res = await api.start_download(url, selectedFormat, currentDownloadDir);
         onDownloadFinished(res);
       } catch (err) {
-        statusMessage.textContent = 'Hata: ' + (err.message || err);
+        statusMessage.textContent = 'Error: ' + (err.message || err);
         stateSpinner.style.display = 'none';
         resetUI();
       }
@@ -1405,11 +1575,11 @@
         metricSpeed.textContent = speedStr;
 
         const eta = data.eta || 0;
-        metricEta.textContent = eta > 0 ? `${eta} sn` : 'Hesaplanıyor';
-        statusMessage.textContent = `Yüksek hızda indiriliyor...`;
+        metricEta.textContent = eta > 0 ? `${eta} ${t('eta_sec')}` : t('eta_calc');
+        statusMessage.textContent = t('status_downloading');
       } else if (data.status === 'processing') {
         progressBarFill.style.width = '96%';
-        statusMessage.textContent = 'FFmpeg ile kayıpsız birleştiriliyor...';
+        statusMessage.textContent = t('status_muxing');
       }
     };
 
@@ -1418,13 +1588,13 @@
       progressBarFill.style.width = '100%';
       progressBarFill.classList.add('done');
       metricPercent.textContent = '%100';
-      metricEta.textContent = '0 sn';
+      metricEta.textContent = `0 ${t('eta_sec')}`;
       stateSpinner.style.display = 'none';
       stateCheck.style.display = 'block';
-      statusMessage.textContent = 'İndirme ve birleştirme tamamlandı';
+      statusMessage.textContent = t('status_done');
 
       completedBar.style.display = 'flex';
-      resultTitle.textContent = (res && res.title) ? res.title : 'Dosya kaydedildi';
+      resultTitle.textContent = (res && res.title) ? res.title : 'File saved';
 
       resetUI();
     }
@@ -1434,6 +1604,9 @@
       downloadBtn.disabled = false;
       setFormat(selectedFormat);
     }
+
+    // Initialize Language & Bridge
+    setLanguage(currentLang);
 
     window.addEventListener('pywebviewready', async () => {
       const api = await getApi();
