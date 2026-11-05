@@ -7,6 +7,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -20,6 +21,11 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import com.yausername.ffmpeg.FFmpeg
+import com.yausername.youtubedl_android.YoutubeDL
+import com.yausername.youtubedl_android.YoutubeDLRequest
+import org.json.JSONObject
+import java.io.File
 
 class MainActivity : Activity() {
 
@@ -41,6 +47,16 @@ class MainActivity : Activity() {
                 )
             }
         } catch (ignored: Throwable) {}
+
+        // Initialize YoutubeDL and FFmpeg asynchronously in background
+        Thread {
+            try {
+                YoutubeDL.getInstance().init(applicationContext)
+                FFmpeg.getInstance().init(applicationContext)
+            } catch (e: Throwable) {
+                e.printStackTrace()
+            }
+        }.start()
 
         try {
             handleIncomingIntent(intent)
@@ -147,60 +163,131 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun get_download_dir(): String {
-            return "/storage/emulated/0/Download/Fluxion"
+            val publicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            return File(publicDir, "Fluxion").absolutePath
         }
 
         @JavascriptInterface
         fun select_directory(): String {
-            return "/storage/emulated/0/Download/Fluxion"
+            val dir = get_download_dir()
+            showToast("Saved to: $dir")
+            return dir
         }
 
         @JavascriptInterface
         fun open_download_folder() {
-            try {
-                val intent = Intent(DownloadManager.ACTION_VIEW_DOWNLOADS).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            runOnUiThread {
+                try {
+                    val intent = Intent(DownloadManager.ACTION_VIEW_DOWNLOADS).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    context.startActivity(intent)
+                } catch (e: Exception) {
+                    try {
+                        val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(Uri.parse(get_download_dir()), "*/*")
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(viewIntent)
+                    } catch (ex: Exception) {
+                        showToast("Files saved to Downloads/Fluxion")
+                    }
                 }
-                context.startActivity(intent)
+            }
+        }
+
+        @JavascriptInterface
+        fun get_info(url: String): String {
+            return try {
+                val info = YoutubeDL.getInstance().getInfo(url)
+                val json = JSONObject().apply {
+                    put("title", info.title ?: "Media Stream")
+                    put("uploader", info.uploader ?: "Creator")
+                    put("duration", info.duration)
+                    put("thumbnail", info.thumbnail ?: "")
+                }
+                json.toString()
             } catch (e: Exception) {
-                showToast("Download directory: /storage/emulated/0/Download/Fluxion")
+                JSONObject().apply {
+                    put("error", e.message ?: "Could not resolve metadata")
+                }.toString()
             }
         }
 
         @JavascriptInterface
         fun start_download(url: String, format: String, customDir: String?): String {
-            runOnUiThread {
-                triggerDownload(url, format)
-            }
-            return """{"status":"downloading","title":"Fluxion Stream"}"""
+            Thread {
+                try {
+                    val publicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                    val downloadFolder = File(publicDir, "Fluxion").takeIf { it.exists() || it.mkdirs() }
+                        ?: File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "Fluxion").apply { mkdirs() }
+
+                    val request = YoutubeDLRequest(url).apply {
+                        addOption("--no-mtime")
+                        addOption("-o", "${downloadFolder.absolutePath}/%(title)s.%(ext)s")
+                        if (format.equals("mp3", ignoreCase = true)) {
+                            addOption("-x")
+                            addOption("--audio-format", "mp3")
+                            addOption("--audio-quality", "0")
+                        } else {
+                            addOption("-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best")
+                        }
+                    }
+
+                    var lastReport = 0L
+                    YoutubeDL.getInstance().execute(request) { progress, etaInSeconds, line ->
+                        val now = System.currentTimeMillis()
+                        if (now - lastReport > 200 || progress >= 100f) {
+                            lastReport = now
+                            val pct = progress.coerceIn(0f, 100f)
+                            runOnUiThread {
+                                webView.evaluateJs(
+                                    "if (window.onProgress) { window.onProgress({status: 'downloading', percent: $pct, eta: $etaInSeconds}); }"
+                                )
+                            }
+                        }
+                    }
+
+                    // Index newly downloaded files into MediaStore so they instantly appear in Gallery
+                    val latestFile = downloadFolder.listFiles()?.maxByOrNull { it.lastModified() }
+                    val finalTitle = latestFile?.name ?: "Fluxion_${System.currentTimeMillis()}"
+
+                    if (latestFile != null && latestFile.exists()) {
+                        val mimeType = if (format.equals("mp3", ignoreCase = true)) "audio/mpeg" else "video/mp4"
+                        MediaScannerConnection.scanFile(
+                            context,
+                            arrayOf(latestFile.absolutePath),
+                            arrayOf(mimeType),
+                            null
+                        )
+                    }
+
+                    val titleJson = JSONObject.quote(finalTitle)
+                    runOnUiThread {
+                        webView.evaluateJs(
+                            "if (window.onDownloadFinished) { window.onDownloadFinished({title: $titleJson}); }"
+                        )
+                        showToast("Saved to Downloads/Fluxion")
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    val errorMsg = JSONObject.quote(e.message ?: "Download failed")
+                    runOnUiThread {
+                        webView.evaluateJs(
+                            "if (window.onDownloadError) { window.onDownloadError($errorMsg); }"
+                        )
+                        showToast("Error: ${e.message}")
+                    }
+                }
+            }.start()
+
+            return """{"status":"started"}"""
         }
 
         @JavascriptInterface
         fun showToast(message: String) {
             runOnUiThread {
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        private fun triggerDownload(url: String, format: String) {
-            try {
-                val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-                val uri = Uri.parse(url)
-                val ext = if (format == "mp3") "mp3" else "mp4"
-                val filename = "Fluxion_${System.currentTimeMillis()}.$ext"
-
-                val request = DownloadManager.Request(uri).apply {
-                    setTitle(filename)
-                    setDescription("Fluxion Media Engine ($format)")
-                    setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                    setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "Fluxion/$filename")
-                    setAllowedOverMetered(true)
-                    setAllowedOverRoaming(true)
-                }
-                downloadManager.enqueue(request)
-                showToast("Download queued to Downloads/Fluxion")
-            } catch (e: Exception) {
-                showToast("Stream request sent: $url")
             }
         }
     }

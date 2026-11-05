@@ -41,6 +41,11 @@
       -webkit-font-smoothing: antialiased;
     }
 
+    button, a, input {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background-color: var(--bg-base);
@@ -1593,26 +1598,33 @@
       urlInput.focus();
     });
 
-    // Hardened Crash-Proof Paste Button
-    pasteBtn.addEventListener('click', async () => {
+    // Hardened Crash-Proof & Touch-Friendly Paste Button
+    pasteBtn.addEventListener('click', async (e) => {
+      if (e) e.preventDefault();
       try {
         let text = '';
-        // 1. Try PyWebView API bridge (safe 64-bit ctypes)
-        try {
-          const api = await getApi();
-          if (api && typeof api.get_clipboard === 'function') {
-            text = await api.get_clipboard();
+        if (window.Android) {
+          if (typeof window.Android.get_clipboard === 'function') {
+            text = window.Android.get_clipboard();
+          } else if (typeof window.Android.getClipboard === 'function') {
+            text = window.Android.getClipboard();
           }
-        } catch (apiErr) {
-          console.warn('Bridge clipboard lookup:', apiErr);
-        }
-
-        // 2. Fallback to standard navigator.clipboard
-        if (!text && navigator.clipboard && navigator.clipboard.readText) {
+        } else {
           try {
-            text = await navigator.clipboard.readText();
-          } catch (navErr) {
-            console.warn('Navigator clipboard fallback:', navErr);
+            const api = await getApi();
+            if (api && typeof api.get_clipboard === 'function') {
+              text = await api.get_clipboard();
+            }
+          } catch (apiErr) {
+            console.warn('Bridge clipboard lookup:', apiErr);
+          }
+
+          if (!text && navigator.clipboard && navigator.clipboard.readText) {
+            try {
+              text = await navigator.clipboard.readText();
+            } catch (navErr) {
+              console.warn('Navigator clipboard fallback:', navErr);
+            }
           }
         }
 
@@ -1665,7 +1677,8 @@
           previewAuthor.textContent = t('preview_connecting');
           previewDuration.textContent = '--:--';
 
-          const info = await api.get_info(url);
+          const rawInfo = await api.get_info(url);
+          const info = typeof rawInfo === 'string' ? JSON.parse(rawInfo) : rawInfo;
           if (info && info.title && !info.error) {
             previewTitle.textContent = info.title;
             previewAuthor.textContent = info.uploader || 'Creator';
@@ -1684,7 +1697,8 @@
     }
 
     // Browse directory
-    browseBtn.addEventListener('click', async () => {
+    browseBtn.addEventListener('click', async (e) => {
+      if (e) e.preventDefault();
       if (isDownloading) return;
       const api = await getApi();
       if (api && typeof api.select_directory === 'function') {
@@ -1696,14 +1710,16 @@
       }
     });
 
-    quickOpenBtn.addEventListener('click', async () => {
+    quickOpenBtn.addEventListener('click', async (e) => {
+      if (e) e.preventDefault();
       const api = await getApi();
       if (api && typeof api.open_download_folder === 'function') {
         api.open_download_folder();
       }
     });
 
-    openFolderBtn.addEventListener('click', async () => {
+    openFolderBtn.addEventListener('click', async (e) => {
+      if (e) e.preventDefault();
       const api = await getApi();
       if (api && typeof api.open_download_folder === 'function') {
         api.open_download_folder();
@@ -1742,12 +1758,16 @@
         if (!api || typeof api.start_download !== 'function') {
           throw new Error('Engine bridge initialization failed.');
         }
-        const res = await api.start_download(url, selectedFormat, currentDownloadDir);
-        onDownloadFinished(res);
+
+        if (window.Android) {
+          // Android starts asynchronous native process with progress & completion callbacks
+          api.start_download(url, selectedFormat, currentDownloadDir);
+        } else {
+          const res = await api.start_download(url, selectedFormat, currentDownloadDir);
+          window.onDownloadFinished(res);
+        }
       } catch (err) {
-        statusMessage.textContent = 'Error: ' + (err.message || err);
-        stateSpinner.style.display = 'none';
-        resetUI();
+        window.onDownloadError(err.message || err);
       }
     }
 
@@ -1761,7 +1781,7 @@
         const speed = data.speed || 0;
         const speedStr = speed > 1024 * 1024 
           ? (speed / (1024 * 1024)).toFixed(1) + ' MB/s'
-          : (speed / 1024).toFixed(0) + ' KB/s';
+          : speed > 0 ? (speed / 1024).toFixed(0) + ' KB/s' : 'MAX SPEED';
         metricSpeed.textContent = speedStr;
 
         const eta = data.eta || 0;
@@ -1773,7 +1793,7 @@
       }
     };
 
-    function onDownloadFinished(res) {
+    window.onDownloadFinished = function(res) {
       isDownloading = false;
       progressBarFill.style.width = '100%';
       progressBarFill.classList.add('done');
@@ -1787,7 +1807,14 @@
       resultTitle.textContent = (res && res.title) ? res.title : 'File saved';
 
       resetUI();
-    }
+    };
+
+    window.onDownloadError = function(errMsg) {
+      isDownloading = false;
+      statusMessage.textContent = 'Error: ' + (errMsg || 'Download failed');
+      stateSpinner.style.display = 'none';
+      resetUI();
+    };
 
     function resetUI() {
       isDownloading = false;
