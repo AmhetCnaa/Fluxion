@@ -138,6 +138,9 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface
+        fun get_clipboard(): String = getClipboard()
+
+        @JavascriptInterface
         fun getSharedUrl(): String {
             return sharedUrl
         }
