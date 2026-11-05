@@ -51,8 +51,30 @@ class MainActivity : Activity() {
         // Initialize YoutubeDL and FFmpeg asynchronously in background
         Thread {
             try {
+                // Ensure latest bundled yt-dlp binary is written to the files directory
+                val ytdlpDir = File(applicationContext.filesDir, "ytdlp")
+                val ytdlpFile = File(ytdlpDir, "yt-dlp")
+                try {
+                    resources.openRawResource(R.raw.ytdlp).use { input ->
+                        ytdlpDir.mkdirs()
+                        ytdlpFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                        ytdlpFile.setExecutable(true)
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+
                 YoutubeDL.getInstance().init(applicationContext)
                 FFmpeg.getInstance().init(applicationContext)
+
+                // Optional: update to latest stable yt-dlp in background
+                try {
+                    YoutubeDL.getInstance().updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)
+                } catch (e: Exception) {
+                    // Ignore offline update error
+                }
             } catch (e: Throwable) {
                 e.printStackTrace()
             }
@@ -199,7 +221,12 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun get_info(url: String): String {
             return try {
-                val info = YoutubeDL.getInstance().getInfo(url)
+                val req = YoutubeDLRequest(url).apply {
+                    addOption("--no-check-certificates")
+                    addOption("--no-warnings")
+                    addOption("--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36")
+                }
+                val info = YoutubeDL.getInstance().getInfo(req)
                 val json = JSONObject().apply {
                     put("title", info.title ?: "Media Stream")
                     put("uploader", info.uploader ?: "Creator")
@@ -224,13 +251,18 @@ class MainActivity : Activity() {
 
                     val request = YoutubeDLRequest(url).apply {
                         addOption("--no-mtime")
+                        addOption("--no-update")
+                        addOption("--no-warnings")
+                        addOption("--no-check-certificates")
+                        addOption("--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36")
                         addOption("-o", "${downloadFolder.absolutePath}/%(title)s.%(ext)s")
                         if (format.equals("mp3", ignoreCase = true)) {
                             addOption("-x")
                             addOption("--audio-format", "mp3")
                             addOption("--audio-quality", "0")
                         } else {
-                            addOption("-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best")
+                            addOption("-f", "bestvideo*+bestaudio/best")
+                            addOption("--merge-output-format", "mp4")
                         }
                     }
 
