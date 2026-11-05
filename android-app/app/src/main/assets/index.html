@@ -1363,8 +1363,9 @@
   </div>
 
   <script>
-    // Spotlight mouse tracker
+    // Spotlight mouse tracker (disabled on touch/mobile for maximum FPS)
     function trackSpotlight(e, el) {
+      if (window.matchMedia('(pointer: coarse)').matches) return;
       const rect = el.getBoundingClientRect();
       el.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
       el.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
@@ -1650,7 +1651,7 @@
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         onUrlChanged(val);
-      }, 400);
+      }, 150);
     });
 
     urlInput.addEventListener('keydown', (e) => {
